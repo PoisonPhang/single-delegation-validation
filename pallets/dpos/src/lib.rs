@@ -1,3 +1,24 @@
+//! Delegated Proof of Stake pallet implementation
+//!
+//! Nominations held over the some amount of blocks as defined by `Epoch`. At the end of each
+//! Epoch, the validators with the highest nominations are elected as validators into `pallet_aura`.
+//! Once The electection concludes, the nominations and validator registeration resets.
+//!
+//! Nominators can nominate either a validator, or another nominator to nominate in thier steed.
+//! Nominators can only nominate one nominee per Epoch.
+//!
+//! Validators must register every Epoch.
+//!
+//! ## DPoS
+//! - [`Pallet`](pallet::Pallet)
+//! - [`Config`](pallet::Config)
+//!
+//! ## Traits
+//! - [`DPoS`](common::pallets::dpos::DPoS)
+//!
+//! ## Public Non-Trait Functions
+//! - [`pallet_account_id`](pallet::pallet_account_id)
+//! - [`find_nominated_validator`](pallet::find_nominated_validator)
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub use pallet::*;
@@ -18,7 +39,7 @@ pub mod pallet {
 		Blake2_128Concat, PalletId,
 	};
 	use frame_system::pallet_prelude::{BlockNumberFor, OriginFor, *};
-    use sp_std::vec::Vec;
+	use sp_std::vec::Vec;
 
 	/// Account ID as configured for this pallet by the runtime
 	pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
@@ -58,9 +79,15 @@ pub mod pallet {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
 		fn on_initialize(block_number: T::BlockNumber) -> Weight {
+			let mut validator_stakes: Vec<(_, _)> = ValidatorStakes::<T>::iter().collect();
+
+			// If no new validators registered, use existing set
+			if validator_stakes.is_empty() {
+				return 0_u64
+			}
+
 			// if last block (block_number - 1) was the end of an epoch
 			if block_number.saturating_sub(1_u32.into()) % T::Epoch::get() == 0_u32.into() {
-				let mut validator_stakes: Vec<(_, _)> = ValidatorStakes::<T>::iter().collect();
 				validator_stakes.sort_by(|a, b| b.1.cmp(&a.1));
 
 				let validator_ids: Vec<_> = validator_stakes
@@ -71,7 +98,14 @@ pub mod pallet {
 				let next_set: BoundedVec<ConsensusAuthorityId<T>, ConsensusMaximumAuthorities<T>> =
 					BoundedVec::truncate_from(validator_ids);
 
+				// Update aura authorities
 				pallet_aura::pallet::Pallet::<T>::change_authorities(next_set);
+
+				// Clean up last nomination
+				// TODO: Handle failed removal
+				Validators::<T>::clear(ConsensusMaximumAuthorities::<T>::get(), None);
+				ValidatorStakes::<T>::clear(ConsensusMaximumAuthorities::<T>::get(), None);
+				Nominations::<T>::clear(ConsensusMaximumAuthorities::<T>::get(), None);
 			}
 			0_u64
 		}
@@ -156,6 +190,13 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Register yourself as a validator.
+		///
+		/// # Emmits
+		/// - ValidatorRegistered
+		///
+		/// # Errors
+		/// - InsufficentBalance: Provided stake does not meet `MinimumValidatorStake` as
+		/// configured by the runtime
 		#[pallet::weight(10_000)]
 		pub fn register_validator(
 			origin: OriginFor<T>,
@@ -173,6 +214,14 @@ pub mod pallet {
 		///
 		/// Altenatively, provide the accound ID of another nominator and have you stake chained to
 		/// thier nominee.
+		///
+		/// # Emmits
+		/// - NewNomination
+		///
+		/// # Errors
+		/// - InsufficentBalance: Provided stake does not meet `MinimumNominatorStake` as
+		/// configured by the runtime
+		/// - InvalidNomination: Tried to nominate an irrelevent account or self
 		#[pallet::weight(10_000)]
 		pub fn nominate(
 			origin: OriginFor<T>,
