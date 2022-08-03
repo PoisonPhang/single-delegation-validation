@@ -6,6 +6,7 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
+use frame_support::PalletId;
 use pallet_grandpa::{
 	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
 };
@@ -44,7 +45,7 @@ pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Permill};
 
 /// Import the template pallet.
-pub use validator_delegation;
+pub use pallet_dpos;
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -262,9 +263,18 @@ impl pallet_sudo::Config for Runtime {
 	type Call = Call;
 }
 
+parameter_types! {
+	pub DPoSPalletId: PalletId = PalletId(*b"pal_dpos");
+}
+
 /// Configure the pallet-template in pallets/template.
-impl validator_delegation::Config for Runtime {
+impl pallet_dpos::Config for Runtime {
 	type Event = Event;
+	type Epoch = ConstU32<32>;
+	type MinimumNominatorStake = ConstU128<10_000>;
+	type MinimumValidatorStake = ConstU128<10_000>;
+	type NativeCurrency = Balances;
+	type PalletId = DPoSPalletId;
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
@@ -283,7 +293,7 @@ construct_runtime!(
 		TransactionPayment: pallet_transaction_payment,
 		Sudo: pallet_sudo,
 		// Include the custom logic from the pallet-template in the runtime.
-		ValidatorDelegation: validator_delegation,
+		DPoS: pallet_dpos,
 	}
 );
 
@@ -328,7 +338,7 @@ mod benches {
 		[frame_system, SystemBench::<Runtime>]
 		[pallet_balances, Balances]
 		[pallet_timestamp, Timestamp]
-		[validator_delegation, ValidatorDelegation]
+		[pallet_dpos, DPoS]
 	);
 }
 
