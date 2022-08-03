@@ -18,6 +18,7 @@ pub mod pallet {
 		Blake2_128Concat, PalletId,
 	};
 	use frame_system::pallet_prelude::{BlockNumberFor, OriginFor, *};
+    use sp_std::vec::Vec;
 
 	/// Account ID as configured for this pallet by the runtime
 	pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;

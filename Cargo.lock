@@ -795,6 +795,8 @@ name = "common"
 version = "0.1.0"
 dependencies = [
  "frame-support",
+ "frame-system",
+ "sp-std",
 ]
 
 [[package]]
@@ -4032,6 +4034,7 @@ dependencies = [
  "sp-core",
  "sp-io",
  "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]

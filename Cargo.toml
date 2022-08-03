@@ -2,7 +2,7 @@
 members = [
     "common",
     "node",
-    "pallets/template",
+    "pallets/dpos",
     "runtime",
 ]
 [profile.release]
