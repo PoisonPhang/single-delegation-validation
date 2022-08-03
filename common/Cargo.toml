@@ -1,0 +1,24 @@
+[package]
+name = "common"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+frame-support = { default-features = false, version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.26"}
+frame-system = { default-features = false, version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.26" }
+sp-std = { default-features = false, version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.26" }
+
+[features]
+default = ["std"]
+std = [
+  "frame-support/std",
+  "frame-system/std",
+  "sp-std/std",
+]
+
+try-runtime = [
+	"frame-system/try-runtime",
+]
+
